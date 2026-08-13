@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#070b14" />
+  <meta name="description" content="Deep Time — an interactive museum that compresses Earth's 4.54 billion years into a single day." />
+  <title>DEEP TIME — A Museum of a Living Planet</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <canvas id="starfield" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+  <div id="scrollProgress" aria-hidden="true"></div>
+
+  <header class="site-header" id="top">
+    <a class="brand" href="#top" aria-label="Deep Time home">
+      <span class="brand-mark"></span>
+      <span>DEEP TIME</span>
+    </a>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="#clock">The Day</a>
+      <a href="#epochs">Epochs</a>
+      <a href="#extinctions">Extinctions</a>
+      <a href="#now">Now</a>
+    </nav>
+    <button class="sound-toggle" id="soundToggle" type="button" aria-pressed="false" title="Toggle ambient sound">
+      <span class="sound-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="sound-label">Sound</span>
+    </button>
+  </header>
+
+  <main>
+    <section class="hero section" aria-labelledby="heroTitle">
+      <div class="hero-copy reveal">
+        <p class="eyebrow"><span>01</span> A museum measured in billions of years</p>
+        <h1 id="heroTitle">You arrived<br /><em>very late.</em></h1>
+        <p class="hero-deck">If Earth’s entire history were compressed into one ordinary day, humanity would appear in the final seconds before midnight.</p>
+        <a class="enter-link" href="#clock">Enter the planet <span aria-hidden="true">↓</span></a>
+      </div>
+
+      <div class="planet-stage" aria-hidden="true">
+        <div class="orbit orbit-a"></div>
+        <div class="orbit orbit-b"></div>
+        <div class="earth" id="earth">
+          <div class="earth-glow"></div>
+          <div class="continents"></div>
+          <div class="clouds"></div>
+          <div class="atmosphere"></div>
+        </div>
+        <div class="planet-label label-age"><b>4.54</b><span>billion years</span></div>
+        <div class="planet-label label-water"><b>71%</b><span>surface water</span></div>
+        <div class="planet-label label-life"><b>1</b><span>known living world</span></div>
+      </div>
+
+      <div class="hero-coordinate" aria-hidden="true">40.7128° N / 74.0060° W<br />LOCAL OBSERVATION POINT</div>
+    </section>
+
+    <section class="intro-strip" aria-label="Perspective">
+      <p>Most of the planet’s story happened without animals.</p>
+      <div class="ticker" aria-hidden="true">
+        <div class="ticker-track">STONE · FIRE · OCEAN · CELL · OXYGEN · ICE · BONE · FOREST · IMPACT · MAMMAL · MIND · &nbsp; STONE · FIRE · OCEAN · CELL · OXYGEN · ICE · BONE · FOREST · IMPACT · MAMMAL · MIND ·</div>
+      </div>
+    </section>
+
+    <section class="clock-section section" id="clock" aria-labelledby="clockTitle">
+      <div class="section-kicker reveal">THE 24-HOUR EARTH</div>
+      <div class="clock-grid">
+        <div class="clock-copy reveal">
+          <h2 id="clockTitle">Drag time.<br />Watch the world <em>become.</em></h2>
+          <p>Midnight is Earth’s formation. The next midnight is now. Move through the day to see what existed at that moment.</p>
+          <div class="time-readout" aria-live="polite">
+            <span id="clockTime">00:00:00</span>
+            <strong id="yearsAgo">4.54 billion years ago</strong>
+          </div>
+        </div>
+
+        <div class="time-machine reveal">
+          <div class="time-dial" id="timeDial">
+            <div class="dial-ring"></div>
+            <div class="dial-ticks"></div>
+            <div class="dial-hand" id="dialHand"></div>
+            <div class="dial-center">
+              <span id="eraGlyph">●</span>
+              <b id="eraName">Hadean</b>
+              <small id="eraSub">A planet under construction</small>
+            </div>
+          </div>
+          <label class="sr-only" for="timeSlider">Earth history time</label>
+          <input id="timeSlider" class="time-slider" type="range" min="0" max="1000" value="0" />
+          <div class="slider-labels"><span>EARTH FORMS</span><span>NOW</span></div>
+          <p class="event-caption" id="eventCaption">A molten young Earth is assembling from collisions, heat, and gravity.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="scale-section section" aria-labelledby="scaleTitle">
+      <div class="scale-header reveal">
+        <div>
+          <div class="section-kicker">THE SCALE PROBLEM</div>
+          <h2 id="scaleTitle">History is not<br />evenly distributed.</h2>
+        </div>
+        <p>The familiar part—the dinosaurs, forests, mammals, cities—crowds into the last sliver of the day.</p>
+      </div>
+
+      <div class="day-bar reveal" role="img" aria-label="Earth history compressed to a 24 hour day">
+        <div class="segment hadean"><span>HADEAN</span></div>
+        <div class="segment archean"><span>ARCHEAN</span></div>
+        <div class="segment proterozoic"><span>PROTEROZOIC</span></div>
+        <div class="segment phanerozoic"><span>PHANEROZOIC</span></div>
+        <div class="human-sliver" title="Recorded human history"></div>
+      </div>
+      <div class="day-hours reveal"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+
+      <div class="fact-grid">
+        <article class="fact-card reveal">
+          <span class="fact-number">04:06</span>
+          <h3>First life</h3>
+          <p>Simple microbial life is present by roughly 3.5–3.8 billion years ago.</p>
+        </article>
+        <article class="fact-card reveal">
+          <span class="fact-number">11:20</span>
+          <h3>Oxygen rises</h3>
+          <p>Photosynthetic microbes transform the atmosphere in the Great Oxidation Event.</p>
+        </article>
+        <article class="fact-card reveal">
+          <span class="fact-number">20:56</span>
+          <h3>Complex animals</h3>
+          <p>The Ediacaran world precedes the Cambrian diversification of animal body plans.</p>
+        </article>
+        <article class="fact-card reveal accent-card">
+          <span class="fact-number">23:59:56</span>
+          <h3>Us</h3>
+          <p>Homo sapiens appears only a few seconds before the clock reaches midnight.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="epochs section" id="epochs" aria-labelledby="epochsTitle">
+      <div class="epochs-heading reveal">
+        <div class="section-kicker">WALK THE STRATA</div>
+        <h2 id="epochsTitle">Four worlds.<br />One planet.</h2>
+        <p>Scroll downward. The floor beneath you gets younger.</p>
+      </div>
+
+      <div class="strata" id="strata">
+        <article class="stratum stratum-hadean reveal" data-era="Hadean">
+          <div class="stratum-index">I</div>
+          <div class="stratum-content">
+            <p class="stratum-date">4.54–4.0 billion years ago</p>
+            <h3>Hadean</h3>
+            <p>A violent beginning. Impacts, magma oceans, the formation of the Moon, then cooling crust and the first long-lived oceans.</p>
+            <div class="metric"><span>Atmosphere</span><b>No breathable oxygen</b></div>
+          </div>
+          <div class="stratum-art art-hadean" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        </article>
+
+        <article class="stratum stratum-archean reveal" data-era="Archean">
+          <div class="stratum-index">II</div>
+          <div class="stratum-content">
+            <p class="stratum-date">4.0–2.5 billion years ago</p>
+            <h3>Archean</h3>
+            <p>The first durable continents emerge. Microbial life thrives in oceans beneath a faint young Sun.</p>
+            <div class="metric"><span>Dominant life</span><b>Microbes</b></div>
+          </div>
+          <div class="stratum-art art-archean" aria-hidden="true"><i></i><i></i><i></i></div>
+        </article>
+
+        <article class="stratum stratum-proterozoic reveal" data-era="Proterozoic">
+          <div class="stratum-index">III</div>
+          <div class="stratum-content">
+            <p class="stratum-date">2.5 billion–539 million years ago</p>
+            <h3>Proterozoic</h3>
+            <p>Oxygen accumulates. Complex cells arise. Snowball Earth episodes freeze much of the globe. Multicellular life expands.</p>
+            <div class="metric"><span>Planetary shift</span><b>Oxygenation</b></div>
+          </div>
+          <div class="stratum-art art-proterozoic" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        </article>
+
+        <article class="stratum stratum-phanerozoic reveal" data-era="Phanerozoic">
+          <div class="stratum-index">IV</div>
+          <div class="stratum-content">
+            <p class="stratum-date">539 million years ago–now</p>
+            <h3>Phanerozoic</h3>
+            <p>Visible animal life explodes in diversity. Forests rise, reptiles dominate, dinosaurs vanish, mammals radiate, and one ape begins asking questions.</p>
+            <div class="metric"><span>Current chapter</span><b>Cenozoic</b></div>
+          </div>
+          <div class="stratum-art art-phanerozoic" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="extinctions section" id="extinctions" aria-labelledby="extinctionTitle">
+      <div class="extinction-header reveal">
+        <div>
+          <div class="section-kicker">THE BIG FIVE</div>
+          <h2 id="extinctionTitle">Life has nearly<br />lost before.</h2>
+        </div>
+        <p>Mass extinctions are not endings. They are brutal filters that change which lineages inherit the aftermath.</p>
+      </div>
+
+      <div class="extinction-console reveal">
+        <div class="extinction-list" role="tablist" aria-label="Mass extinction events">
+          <button class="extinction-tab active" role="tab" aria-selected="true" data-event="ordovician"><span>444 Ma</span><b>End-Ordovician</b><i>~85%</i></button>
+          <button class="extinction-tab" role="tab" aria-selected="false" data-event="devonian"><span>372–359 Ma</span><b>Late Devonian</b><i>~75%</i></button>
+          <button class="extinction-tab" role="tab" aria-selected="false" data-event="permian"><span>252 Ma</span><b>End-Permian</b><i>&gt;80%</i></button>
+          <button class="extinction-tab" role="tab" aria-selected="false" data-event="triassic"><span>201 Ma</span><b>End-Triassic</b><i>~80%</i></button>
+          <button class="extinction-tab" role="tab" aria-selected="false" data-event="cretaceous"><span>66 Ma</span><b>End-Cretaceous</b><i>~76%</i></button>
+        </div>
+
+        <div class="extinction-visual" id="extinctionVisual">
+          <div class="impact-ring ring-1"></div>
+          <div class="impact-ring ring-2"></div>
+          <div class="impact-ring ring-3"></div>
+          <div class="extinction-core"><span id="extinctionPercent">~85%</span><small>marine species lost</small></div>
+          <div class="extinction-detail">
+            <span id="extinctionCause">Rapid cooling + glaciation</span>
+            <p id="extinctionStory">A severe ice age and sea-level fall transform shallow marine habitats at the end of the Ordovician.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pulse-section section" aria-labelledby="pulseTitle">
+      <div class="pulse-copy reveal">
+        <div class="section-kicker">PLANETARY PULSE</div>
+        <h2 id="pulseTitle">A world that<br />never holds still.</h2>
+        <p>Continents assemble and split. Climate swings. Magnetic poles wander. Species bloom and disappear. “Normal” is only a frame in motion.</p>
+      </div>
+      <div class="pulse-panel reveal">
+        <canvas id="pulseCanvas" width="1100" height="430" aria-label="Animated abstract visualization of planetary change"></canvas>
+        <div class="pulse-labels"><span>DEEP OCEAN</span><span>TECTONICS</span><span>BIOSPHERE</span><span>ATMOSPHERE</span></div>
+      </div>
+    </section>
+
+    <section class="now-section section" id="now" aria-labelledby="nowTitle">
+      <div class="now-giant reveal" aria-hidden="true">23:59:59</div>
+      <div class="now-content">
+        <div class="now-copy reveal">
+          <div class="section-kicker">THE FINAL SECOND</div>
+          <h2 id="nowTitle">Then the planet<br />learned to <em>remember.</em></h2>
+          <p>Writing, cities, telescopes, fossils, radiometric clocks: in a vanishingly thin slice of geological time, Earth produced a species capable of reconstructing the billions of years that came before it.</p>
+        </div>
+        <div class="human-scale reveal">
+          <div class="human-line">
+            <span class="line-origin">EARTH FORMS</span>
+            <div class="line-track"><i></i></div>
+            <span class="line-now">NOW</span>
+          </div>
+          <div class="human-note">
+            <span class="needle"></span>
+            <b>Recorded history</b>
+            <p>If 4.54 billion years is 24 hours, 5,000 years of recorded history is roughly <strong>0.095 seconds.</strong></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="finale section" aria-labelledby="finaleTitle">
+      <div class="finale-orb" aria-hidden="true"></div>
+      <div class="finale-copy reveal">
+        <p>ONE PLANET / ONE MOMENT</p>
+        <h2 id="finaleTitle">We are not the end<br />of the story.</h2>
+        <span>Only the part that can read it.</span>
+      </div>
+      <a class="restart" href="#top">Return to 4.54 billion years ago ↑</a>
+    </section>
+  </main>
+
+  <footer>
+    <div><span class="brand-mark"></span> DEEP TIME</div>
+    <p>Built as an interactive love letter to planetary history.</p>
+    <p>Times are approximate, for scale and perspective.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
