@@ -15,3 +15,4 @@ A vivid, interactive, multi-page natural-history museum tracing 4.54 billion yea
 Open `index.html` or visit the GitHub Pages deployment for the museum entrance.
 
 Version: 1.2
+Build: multi-page museum
