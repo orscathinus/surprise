@@ -1,218 +1,44 @@
-(() => {
-  'use strict';
-
-  const qs = (s, p = document) => p.querySelector(s);
-  const qsa = (s, p = document) => [...p.querySelectorAll(s)];
-  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  // Scroll progress + subtle Earth parallax
-  const progress = qs('#scrollProgress');
-  const earth = qs('#earth');
-  const onScroll = () => {
-    const y = window.scrollY;
-    const max = document.documentElement.scrollHeight - innerHeight;
-    progress.style.width = `${max > 0 ? (y / max) * 100 : 0}%`;
-    if (earth && !reducedMotion && y < innerHeight * 1.2) {
-      earth.style.transform = `rotate(${-8 + y * 0.012}deg) translateY(${y * 0.035}px)`;
-    }
-  };
-  addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
-
-  // Reveal on intersection
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.12, rootMargin: '0px 0px -5% 0px' });
-  qsa('.reveal').forEach((el, i) => {
-    el.style.transitionDelay = `${Math.min((i % 4) * 70, 210)}ms`;
-    observer.observe(el);
-  });
-
-  // Star field canvas
-  const starCanvas = qs('#starfield');
-  const sctx = starCanvas.getContext('2d');
-  let stars = [];
-  const resizeStars = () => {
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    starCanvas.width = innerWidth * dpr;
-    starCanvas.height = innerHeight * dpr;
-    starCanvas.style.width = `${innerWidth}px`;
-    starCanvas.style.height = `${innerHeight}px`;
-    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const count = Math.min(240, Math.floor((innerWidth * innerHeight) / 7000));
-    stars = Array.from({ length: count }, () => ({
-      x: Math.random() * innerWidth,
-      y: Math.random() * innerHeight,
-      r: Math.random() * 1.15 + .15,
-      a: Math.random() * .5 + .12,
-      s: Math.random() * .11 + .02
-    }));
-  };
-  const drawStars = (t = 0) => {
-    sctx.clearRect(0, 0, innerWidth, innerHeight);
-    for (const star of stars) {
-      const twinkle = reducedMotion ? 1 : .72 + Math.sin(t * .001 * star.s * 20 + star.x) * .28;
-      sctx.beginPath();
-      sctx.fillStyle = `rgba(218,235,232,${star.a * twinkle})`;
-      sctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
-      sctx.fill();
-    }
-    if (!reducedMotion) requestAnimationFrame(drawStars);
-  };
-  resizeStars();
-  addEventListener('resize', resizeStars);
-  drawStars();
-
-  // Interactive 24h Earth clock
-  const slider = qs('#timeSlider');
-  const hand = qs('#dialHand');
-  const clockTime = qs('#clockTime');
-  const yearsAgo = qs('#yearsAgo');
-  const eraName = qs('#eraName');
-  const eraSub = qs('#eraSub');
-  const eraGlyph = qs('#eraGlyph');
-  const eventCaption = qs('#eventCaption');
-
-  const earthAge = 4.54e9;
-  const moments = [
-    { p: 0, era: 'Hadean', sub: 'A planet under construction', glyph: '●', text: 'A molten young Earth is assembling from collisions, heat, and gravity.' },
-    { p: .10, era: 'Hadean', sub: 'Crust, oceans, impacts', glyph: '◉', text: 'The surface cools enough for crust and persistent liquid water while impacts remain common.' },
-    { p: .155, era: 'Archean', sub: 'The microbial world', glyph: '⊙', text: 'The oldest evidence for life points to a planet already inhabited by simple microbes.' },
-    { p: .33, era: 'Archean', sub: 'Photosynthesis spreads', glyph: '✦', text: 'Photosynthetic microbes capture sunlight and release oxygen, slowly changing the chemistry of Earth.' },
-    { p: .48, era: 'Proterozoic', sub: 'Oxygen transforms Earth', glyph: '○', text: 'Atmospheric oxygen rises dramatically, opening new biochemical possibilities while disrupting anaerobic life.' },
-    { p: .68, era: 'Proterozoic', sub: 'Complex cells diversify', glyph: '✺', text: 'Eukaryotic cells—cells with internal structures and nuclei—are widespread.' },
-    { p: .82, era: 'Proterozoic', sub: 'Snowball worlds', glyph: '❄', text: 'Repeated global-scale glaciations push ice toward the tropics before the planet thaws again.' },
-    { p: .89, era: 'Phanerozoic', sub: 'Animals become visible', glyph: '✧', text: 'Complex animal ecosystems expand, followed by the Cambrian diversification of body plans.' },
-    { p: .94, era: 'Paleozoic', sub: 'Life conquers land', glyph: '♣', text: 'Plants, fungi, arthropods, and vertebrates establish increasingly complex ecosystems on land.' },
-    { p: .985, era: 'Mesozoic', sub: 'Age of dinosaurs', glyph: '◇', text: 'Dinosaurs dominate terrestrial ecosystems while the first birds and mammals evolve.' },
-    { p: .997, era: 'Cenozoic', sub: 'Mammal radiation', glyph: '◌', text: 'After the end-Cretaceous extinction, mammals and birds rapidly diversify into newly opened niches.' },
-    { p: .999934, era: 'Human', sub: 'A geological instant', glyph: '✶', text: 'Homo sapiens appears. Nearly the entire planetary day has already passed.' },
-    { p: 1, era: 'Now', sub: 'The clock is still running', glyph: '│', text: 'Midnight is not an ending. It is simply the edge of the page we can currently read.' }
-  ];
-
-  function formatAgo(years) {
-    if (years >= 1e9) return `${(years / 1e9).toFixed(years > 4e9 ? 2 : 1)} billion years ago`;
-    if (years >= 1e6) return `${(years / 1e6).toFixed(years > 100e6 ? 0 : 1)} million years ago`;
-    if (years >= 1e3) return `${Math.round(years / 1000).toLocaleString()} thousand years ago`;
-    if (years > 1) return `${Math.round(years).toLocaleString()} years ago`;
-    return 'now';
-  }
-
-  function updateClock() {
-    const p = Number(slider.value) / 1000;
-    const seconds = p * 86400;
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    clockTime.textContent = [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
-    yearsAgo.textContent = formatAgo(earthAge * (1 - p));
-    hand.style.transform = `rotate(${p * 360 - 90}deg)`;
-    slider.style.setProperty('--progress', `${p * 100}%`);
-    let moment = moments[0];
-    for (const item of moments) if (p >= item.p) moment = item;
-    eraName.textContent = moment.era;
-    eraSub.textContent = moment.sub;
-    eraGlyph.textContent = moment.glyph;
-    eventCaption.textContent = moment.text;
-  }
-  slider.addEventListener('input', updateClock);
-  updateClock();
-
-  // Extinction event console
-  const extinctionData = {
-    ordovician: { pct: '~85%', unit: 'marine species lost', cause: 'Rapid cooling + glaciation', story: 'A severe ice age and sea-level fall transform shallow marine habitats at the end of the Ordovician.' },
-    devonian: { pct: '~75%', unit: 'species lost', cause: 'Ocean anoxia + climate stress', story: 'A long series of pulses destabilizes marine ecosystems, especially reefs, over millions of years.' },
-    permian: { pct: '>80%', unit: 'marine species lost', cause: 'Mass volcanism + extreme warming', story: 'The largest known mass extinction follows immense volcanism, greenhouse warming, ocean acidification, and oxygen loss.' },
-    triassic: { pct: '~80%', unit: 'species lost', cause: 'Volcanism + carbon release', story: 'Enormous eruptions linked to the opening Atlantic drive rapid climate and ocean chemistry change.' },
-    cretaceous: { pct: '~76%', unit: 'species lost', cause: 'Asteroid impact + global darkness', story: 'An asteroid strikes near today’s Yucatán Peninsula. Dust, soot, and aerosols crash food webs worldwide.' }
-  };
-  const tabs = qsa('.extinction-tab');
-  const corePct = qs('#extinctionPercent');
-  const coreUnit = qs('.extinction-core small');
-  const cause = qs('#extinctionCause');
-  const story = qs('#extinctionStory');
-  tabs.forEach(tab => tab.addEventListener('click', () => {
-    tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
-    tab.classList.add('active');
-    tab.setAttribute('aria-selected', 'true');
-    const d = extinctionData[tab.dataset.event];
-    corePct.textContent = d.pct;
-    coreUnit.textContent = d.unit;
-    cause.textContent = d.cause;
-    story.textContent = d.story;
-    const visual = qs('#extinctionVisual');
-    visual.animate([{ opacity: .65, transform: 'scale(.99)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 320, easing: 'ease-out' });
-  }));
-
-  // Planetary pulse canvas
-  const pulseCanvas = qs('#pulseCanvas');
-  const pctx = pulseCanvas.getContext('2d');
-  const bands = [
-    { amp: 23, freq: .015, speed: .00035, y: .22 },
-    { amp: 34, freq: .010, speed: -.00024, y: .43 },
-    { amp: 27, freq: .019, speed: .00019, y: .64 },
-    { amp: 19, freq: .012, speed: -.00031, y: .81 }
-  ];
-  const drawPulse = (t = 0) => {
-    const rect = pulseCanvas.getBoundingClientRect();
-    const w = rect.width;
-    const h = Math.max(300, rect.height);
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    if (pulseCanvas.width !== Math.round(w * dpr) || pulseCanvas.height !== Math.round(h * dpr)) {
-      pulseCanvas.width = Math.round(w * dpr); pulseCanvas.height = Math.round(h * dpr); pctx.setTransform(dpr,0,0,dpr,0,0);
-    }
-    pctx.clearRect(0,0,w,h);
-    pctx.strokeStyle = 'rgba(202,223,216,.07)'; pctx.lineWidth = 1;
-    for (let x=0; x<w; x+=w/12) { pctx.beginPath(); pctx.moveTo(x,0); pctx.lineTo(x,h); pctx.stroke(); }
-    bands.forEach((b, idx) => {
-      pctx.beginPath();
-      for (let x = 0; x <= w; x += 4) {
-        const chaos = Math.sin(x * b.freq * 2.7 - t * b.speed * .6) * b.amp * .25;
-        const y = h * b.y + Math.sin(x * b.freq + t * b.speed) * b.amp + chaos;
-        if (x === 0) pctx.moveTo(x,y); else pctx.lineTo(x,y);
-      }
-      pctx.strokeStyle = idx === 2 ? 'rgba(186,255,99,.55)' : idx === 1 ? 'rgba(99,230,255,.34)' : 'rgba(190,212,205,.22)';
-      pctx.lineWidth = idx === 2 ? 1.5 : 1;
-      pctx.stroke();
-    });
-    if (!reducedMotion) requestAnimationFrame(drawPulse);
-  };
-  drawPulse();
-
-  // Tiny optional ambient synth. Starts only after explicit user interaction.
-  let audioCtx, nodes = [];
-  const soundToggle = qs('#soundToggle');
-  function startSound() {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const master = audioCtx.createGain();
-    master.gain.value = .028;
-    master.connect(audioCtx.destination);
-    [55, 82.5, 110].forEach((freq, i) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      const filter = audioCtx.createBiquadFilter();
-      osc.type = i === 0 ? 'sine' : 'triangle';
-      osc.frequency.value = freq;
-      gain.gain.value = i === 0 ? .52 : .16;
-      filter.type = 'lowpass'; filter.frequency.value = 240 + i * 80;
-      osc.connect(filter); filter.connect(gain); gain.connect(master); osc.start();
-      nodes.push(osc);
-    });
-  }
-  function stopSound() {
-    nodes.forEach(n => { try { n.stop(); } catch {} });
-    nodes = [];
-    if (audioCtx) audioCtx.close();
-    audioCtx = null;
-  }
-  soundToggle.addEventListener('click', () => {
-    const next = soundToggle.getAttribute('aria-pressed') !== 'true';
-    soundToggle.setAttribute('aria-pressed', String(next));
-    next ? startSound() : stopSound();
-  });
-})();
+'use strict';
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)],clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+const events=[
+{p:0,date:'4.54 Ga',title:'Earth accretes',era:'Hadean',tag:'A planet under construction',text:'Rock and metal collide under gravity; impact energy and radioactive decay keep the young planet intensely hot.',what:'Repeated collisions assemble the young Earth while dense metal differentiates inward and silicate rock forms the mantle above.',why:'Accretion and differentiation establish the layered planet whose core, mantle, crust and atmosphere continue to evolve.',know:'Meteorite ages, isotopic systems and lunar samples constrain Solar System formation and early differentiation.',uncertainty:'Almost no intact terrestrial rock survives from this interval, so the earliest chronology is reconstructed indirectly.'},
+{p:5,date:'~4.51 Ga',title:'Moon-forming impact',era:'Hadean',tag:'A companion is born',text:'A giant collision early in Earth history ejects material that ultimately forms the Moon.',what:'The leading class of models involves a collision between proto-Earth and another large body followed by orbiting debris assembling into the Moon.',why:'The event reshaped Earth and strongly influenced the later Earth–Moon system.',know:'Lunar samples, orbital dynamics, geochemistry and computer simulations test giant-impact scenarios.',uncertainty:'The exact geometry, composition and mixing history remain active research questions.'},
+{p:11,date:'~4.0 Ga',title:'Crust + persistent oceans',era:'Archean',tag:'A darker ocean world',text:'Cooling permits increasingly stable crust and long-lived liquid-water environments.',what:'Preserved Archean crust and sediments show durable continental nuclei and abundant liquid water.',why:'Stable water and rock–water chemistry create long-lived environments in which early life can persist.',know:'Ancient zircons, sedimentary rocks, pillow lavas and isotopic signatures record water–crust interaction.',uncertainty:'How much continental crust existed and how early plate tectonics operated remain debated.'},
+{p:22,date:'≥3.5 Ga',title:'Early life',era:'Archean',tag:'Microbial planet',text:'Microbial ecosystems are established in ancient oceans; the oldest biosignatures are interpreted cautiously.',what:'Microorganisms leave chemical, sedimentary and possible cellular traces in very old rocks.',why:'Life begins changing surface chemistry billions of years before animals or plants.',know:'Stromatolites, carbon-isotope patterns, microstructures and sedimentary context are assessed together.',uncertainty:'The oldest candidate biosignatures may be altered or mimicked by non-biological processes.'},
+{p:45,date:'2.45–2.1 Ga',title:'Great Oxidation Event',era:'Proterozoic',tag:'The atmosphere changes state',text:'Atmospheric oxygen rises dramatically compared with earlier conditions.',what:'Oxygen produced by photosynthesis begins accumulating after earlier chemical sinks become less dominant.',why:'Free oxygen opens new metabolic possibilities and transforms mineral and ocean chemistry.',know:'Sulfur-isotope signals, oxidized continental deposits and other geochemical proxies track the transition.',uncertainty:'It was not one smooth step; oxygen fluctuated and stayed far below modern values for much of the Proterozoic.'},
+{p:58,date:'~1.8–1.6 Ga',title:'Complex cells diversify',era:'Proterozoic',tag:'Cells become worlds within worlds',text:'Eukaryotic cells become an increasingly important part of the fossil record.',what:'Eukaryotes combine innovations such as nuclei, cytoskeletons and mitochondria.',why:'Animals, plants, fungi and protists all descend from this broad eukaryotic history.',know:'Microfossils, organic-walled fossils, biomarkers and molecular-clock models provide complementary evidence.',uncertainty:'Different cellular features evolved at different times and molecular clocks depend on model assumptions.'},
+{p:77,date:'~720–635 Ma',title:'Snowball Earth episodes',era:'Proterozoic',tag:'Ice approaches the tropics',text:'Severe Neoproterozoic glaciations leave evidence for ice at very low latitudes.',what:'Large ice sheets expand during the Cryogenian; some models approach near-global ice cover.',why:'Extreme glaciation tests climate feedbacks and precedes major environmental and biological transitions.',know:'Glacial deposits, paleomagnetism, cap carbonates and isotope excursions form the core evidence.',uncertainty:'How complete ice cover became and how much open water remained differ among models.'},
+{p:87.5,date:'~575 Ma',title:'Ediacaran communities',era:'Proterozoic',tag:'Large bodies on the seafloor',text:'Macroscopic soft-bodied organisms leave distinctive impressions before the Cambrian radiation.',what:'Frond-like, quilted and mobile forms occupy Ediacaran seafloors.',why:'They document experiments in large multicellular life close to animal-dominated ecosystems.',know:'Exceptional impressions and trace fossils preserve body outlines and evidence of movement.',uncertainty:'The affinities of many Ediacaran forms remain difficult to place.'},
+{p:88.15,date:'538.8 Ma',title:'Cambrian begins',era:'Paleozoic',tag:'Animals diversify in the seas',text:'Marine ecosystems gain abundant skeletons, predators, burrowers and ecological specialization.',what:'Animal diversification becomes dramatically more visible in the fossil record.',why:'Many recognizable body plans and complex food-web structures appear or expand during this interval.',know:'Body fossils, trace fossils, exceptional Lagerstätten and geochemical records provide rich evidence.',uncertainty:'Diversification began before the boundary and unfolded in pulses rather than one instant.'},
+{p:90.4,date:'~470 Ma',title:'Plants colonize land',era:'Paleozoic',tag:'Green moves ashore',text:'Early land plants spread across continental surfaces and begin transforming terrestrial environments.',what:'Small non-vascular plants appear first; vascular plants and deeper-rooted vegetation follow later.',why:'Plants change weathering, soils, carbon cycling and habitat on land.',know:'Spores, body fossils, ancient soils and geochemical changes track terrestrial vegetation.',uncertainty:'The earliest phase is sparsely fossilized and molecular estimates can predate clear body fossils.'},
+{p:93.1,date:'~365 Ma',title:'Tetrapod transition',era:'Paleozoic',tag:'Fins to limbs',text:'Vertebrates with limb-like appendages diversify in shallow-water and marginal environments.',what:'A mosaic of fish-like and tetrapod-like forms documents limbs, digits, neck mobility and changes in breathing.',why:'This branching transition ultimately contributes to amphibians, reptiles, birds and mammals.',know:'Skeletons, trackways and comparative anatomy reveal intermediate combinations of traits.',uncertainty:'The transition was a branching ecological radiation, not a simple ladder.'},
+{p:94.45,date:'251.9 Ma',title:'End-Permian extinction',era:'Paleozoic',tag:'The greatest Phanerozoic crisis',text:'Volcanism, greenhouse warming and ocean stress coincide with catastrophic biodiversity loss.',what:'The end-Permian event eliminates a very large fraction of marine species and restructures terrestrial ecosystems.',why:'It shows how coupled climate, ocean chemistry and volcanism can reorganize the biosphere.',know:'Siberian Traps volcanism, isotope shifts, mercury anomalies and temperature proxies align around the crisis.',uncertainty:'Researchers continue refining the timing and relative importance of multiple kill mechanisms.'},
+{p:95.6,date:'~230 Ma',title:'Dinosaurs diversify',era:'Mesozoic',tag:'A new terrestrial radiation',text:'Dinosaurs expand from relatively minor Triassic members into major components of terrestrial ecosystems.',what:'Dinosaur lineages diversify into many body sizes, locomotor styles and feeding strategies.',why:'They dominate many large terrestrial niches for much of the Mesozoic and eventually give rise to birds.',know:'Skeletons, footprints, eggs, nests, feathers and bone histology reconstruct their biology.',uncertainty:'Different environments retained very different reptile communities; “dominance” was never uniform.'},
+{p:96.7,date:'~150 Ma',title:'Archaeopteryx',era:'Mesozoic',tag:'Feathered dinosaur mosaic',text:'Late Jurassic fossils preserve flight feathers alongside teeth, claws and a long bony tail.',what:'Archaeopteryx combines avian and non-avian dinosaur traits in Solnhofen fossils.',why:'It is a vivid evolutionary mosaic near the origin of birds.',know:'Multiple articulated skeletons and feather impressions allow detailed anatomical comparison.',uncertainty:'Its exact position among early avialans can shift with new fossils and analyses.'},
+{p:98.55,date:'66 Ma',title:'K–Pg impact',era:'Mesozoic',tag:'A bad day for the Cretaceous',text:'A large asteroid strikes near present-day Yucatán and contributes to a global mass extinction.',what:'The Chicxulub impact injects dust, aerosols and debris into the atmosphere and disrupts climate and food webs.',why:'The event closes the Mesozoic and eliminates all non-avian dinosaurs.',know:'A global iridium-rich boundary, shocked minerals, spherules and the Chicxulub crater tie the event together.',uncertainty:'Major Deccan volcanism was also active, and scientists continue studying how the stresses interacted.'},
+{p:98.9,date:'~55.9 Ma',title:'PETM',era:'Cenozoic',tag:'A rapid ancient warming',text:'A major carbon release drives rapid global warming and ocean acidification.',what:'Large quantities of isotopically light carbon enter the ocean–atmosphere system and temperatures rise.',why:'The PETM is an important deep-time case study of carbon-cycle disruption and biotic response.',know:'Carbon-isotope excursions, sediments, fossil assemblages and temperature proxies record the event.',uncertainty:'The exact mixture and timing of carbon sources remain under investigation.'},
+{p:99.94,date:'~2.58 Ma',title:'Quaternary ice-age cycles',era:'Cenozoic',tag:'A world of advancing ice',text:'Repeated glacial–interglacial cycles reshape continents, sea level and habitats.',what:'Large Northern Hemisphere ice sheets repeatedly expand and contract.',why:'These cycles form the environmental backdrop for much of human evolution and dispersal.',know:'Ice cores, ocean sediments, moraines, pollen, loess and orbital calculations provide high-resolution evidence.',uncertainty:'Regional timing and feedback strength vary and no single proxy captures the whole climate system.'},
+{p:99.9934,date:'~300 ka',title:'Homo sapiens',era:'Cenozoic',tag:'A very late arrival',text:'Our species appears in Africa near the end of a long and branching hominin history.',what:'Populations bearing combinations of anatomically modern traits emerge within Africa and later disperse widely.',why:'Humans eventually become a planetary ecological force—and a species capable of reconstructing deep time.',know:'Fossils, archaeology, genetics and geochronology are integrated to reconstruct origins and dispersals.',uncertainty:'Human origins were population-structured and included gene flow among groups.'}];
+const eraInfo={Hadean:['hadean','EON 01'],Archean:['archean','EON 02'],Proterozoic:['proterozoic','EON 03'],Paleozoic:['paleozoic','ERA 04'],Mesozoic:['mesozoic','ERA 05'],Cenozoic:['cenozoic','ERA 06']};
+const eraAt=p=>p<11.9?'Hadean':p<45?'Archean':p<88.1?'Proterozoic':p<94.45?'Paleozoic':p<98.55?'Mesozoic':'Cenozoic';
+const nearEvent=p=>events.reduce((a,b)=>Math.abs(b.p-p)<Math.abs(a.p-p)?b:a,events[0]);
+const fmtYears=p=>{let ga=4.54*(1-p/100);if(ga>=1)return`${ga.toFixed(ga>3?2:1)} BILLION`;let ma=ga*1000;if(ma>=1)return`${ma>=100?Math.round(ma):ma.toFixed(1)} MILLION`;return`${Math.max(0,Math.round(ma*1000))} THOUSAND`};
+const clock=p=>{let n=Math.round(p/100*86400),h=Math.floor(n/3600)%24,m=Math.floor(n%3600/60),s=n%60;return[h,m,s].map(x=>String(x).padStart(2,'0')).join(':')};
+function updateTime(p){p=clamp(p,0,100);let era=eraAt(p),info=eraInfo[era],ev=nearEvent(p);$('#deepSlider').value=p*10;$('#deepSlider').style.setProperty('--progress',p+'%');document.body.dataset.era=info[0];$('#yearsReadout').textContent=fmtYears(p);$('#dayClock').textContent=clock(p);$('#eraIndex').textContent=info[1];$('#eraReadout').textContent=era.toUpperCase();$('#eraTagline').textContent=ev.tag;$('#eventDate').textContent=ev.date;$('#eventTitle').textContent=ev.title;$('#eventText').textContent=ev.text;$$('.event-dot').forEach(d=>d.classList.toggle('active',d.dataset.title===ev.title));}
+$('#deepSlider').addEventListener('input',e=>updateTime(+e.target.value/10));$$('[data-time]').forEach(b=>b.onclick=()=>updateTime(+b.dataset.time));$('#eventDots').innerHTML=events.map(e=>`<button class="event-dot" style="--x:${e.p}%" data-p="${e.p}" data-title="${e.title}"><span>${e.title}</span></button>`).join('');$$('.event-dot').forEach(b=>b.onclick=()=>updateTime(+b.dataset.p));
+function openField(ev=nearEvent(+$('#deepSlider').value/10)){$('#fieldDate').textContent=ev.date;$('#fieldTitle').textContent=ev.title;$('#fieldLead').textContent=ev.tag;$('#fieldWhat').textContent=ev.what;$('#fieldWhy').textContent=ev.why;$('#fieldKnow').textContent=ev.know;$('#fieldUncertainty').textContent=ev.uncertainty;$('#fieldDialog').showModal()}$('#eventDeepDive').onclick=()=>openField();$('#fieldClose').onclick=()=>$('#fieldDialog').close();$$('.zoom-btn').forEach(b=>b.onclick=()=>{$$('.zoom-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');updateTime(b.dataset.zoom==='deep'?0:b.dataset.zoom==='recent'?88:99.99)});
+const rev=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in')}),{threshold:.08});$$('.reveal').forEach(x=>rev.observe(x));const eraEls=$$('[data-era-section]'),eraObs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){let k=e.target.dataset.eraSection,i=eraEls.indexOf(e.target);document.body.dataset.era=k;$$('.rail-era').forEach(b=>b.classList.toggle('active',b.dataset.jump===k));$('#eraMeterLabel').textContent=k.toUpperCase();$('#eraMeterFill').style.width=(i+1)/eraEls.length*100+'%'}}),{rootMargin:'-35% 0px -45% 0px'});eraEls.forEach(x=>eraObs.observe(x));$$('.rail-era').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.jump)?.scrollIntoView({behavior:'smooth',block:'center'}));addEventListener('scroll',()=>{let m=document.documentElement.scrollHeight-innerHeight;$('#scrollProgress').style.width=(m?scrollY/m*100:0)+'%'},{passive:true});
+const earth=$('#earth');$('.planet-stage').addEventListener('pointermove',e=>{let r=e.currentTarget.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;earth.style.transform=`rotate(-7deg) rotateY(${x*10}deg) rotateX(${-y*8}deg)`});$('.planet-stage').addEventListener('pointerleave',()=>earth.style.transform='rotate(-7deg)');
+const scenes={cambrian:{period:'CAMBRIAN / BURGESS SHALE-TYPE SEA',temp:'Warm shallow marine ecosystem',org:[['Anomalocaris','~518 Ma','A large stem-group arthropod and conspicuous predator of Cambrian seas.','Paired frontal appendages'],['Trilobite','Cambrian–Permian','A mineralized marine arthropod with a segmented exoskeleton.','Three-lobed body plan'],['Pikaia','~508 Ma','A small chordate important for understanding early chordate history.','Elongate body + myomeres'],['Sponge reef','Cambrian','Sessile filter feeders helped structure benthic communities.','Porous filter-feeding body']]},carboniferous:{period:'CARBONIFEROUS / COAL FOREST',temp:'Humid equatorial wetland',org:[['Meganeura','~300 Ma','A giant griffinfly relative among the largest known flying insects.','Broad veined wings'],['Temnospondyl','Carboniferous–Permian','Diverse early tetrapods occupied aquatic and terrestrial habitats.','Broad flattened skull'],['Lycopsid tree','Carboniferous','Tree-sized clubmoss relatives dominated many coal-forming wetlands.','Scale-patterned trunk'],['Arthropleura','Carboniferous','Large many-segmented arthropods inhabited Carboniferous forests.','Repeated body segments']]},jurassic:{period:'LATE JURASSIC / FLOODPLAIN',temp:'Warm seasonal landscape',org:[['Stegosaur','Late Jurassic','Large armored herbivorous dinosaurs carried plates and tail spikes.','Plates + tail spikes'],['Sauropod','Jurassic','Long-necked sauropods became the largest terrestrial animals.','Long neck + columnar limbs'],['Pterosaur','Mesozoic','Flying reptiles evolved powered flight independently of birds and bats.','Elongated wing finger'],['Conifer','Mesozoic','Conifers, cycads, ginkgos and ferns structured Jurassic plant communities.','Needle or scale-like foliage']]},iceage:{period:'LATE PLEISTOCENE / MAMMOTH STEPPE',temp:'Cold, dry, highly seasonal grassland',org:[['Woolly mammoth','Late Pleistocene','Cold-adapted elephants occupied northern steppe-tundra environments.','Curved tusks + shoulder hump'],['Woolly rhinoceros','Late Pleistocene','A shaggy cold-adapted rhinoceros grazed across Eurasia.','Large forward horn'],['Homo sapiens','Late Pleistocene','Humans lived within Ice Age ecosystems as adaptable toolmakers and social hunters.','Composite tools'],['Giant deer','Late Pleistocene','Megaloceros carried enormous antlers in open Eurasian habitats.','Extremely broad antlers']]}};
+function scene(k){let s=scenes[k];$('#diorama').dataset.scene=k;$('#scenePeriod').textContent=s.period;$('#sceneTemp').textContent=s.temp;$('#organismCard').classList.remove('open');$$('.diorama-tab').forEach(b=>b.classList.toggle('active',b.dataset.scene===k))}$$('.diorama-tab').forEach(b=>b.onclick=()=>scene(b.dataset.scene));$$('.organism').forEach((b,i)=>b.onclick=()=>{let o=scenes[$('#diorama').dataset.scene].org[i];$('#organismTag').textContent='SPECIMEN '+String(i+1).padStart(2,'0');$('#organismName').textContent=o[0];$('#organismAge').textContent=o[1];$('#organismText').textContent=o[2];$('#organismFact').textContent=o[3];$('#organismCard').classList.add('open')});$('#closeOrganism').onclick=()=>$('#organismCard').classList.remove('open');
+const evidence={zircon:['RADIOMETRIC DATING','Zircon: a microscopic clock','Zircon can incorporate uranium when it forms while excluding most lead. Uranium–lead decay systems can therefore date crystallization with exceptional precision.','Ages of igneous rocks and surviving grains from very ancient crust.','A date records a specific mineral-forming event, not automatically every surrounding feature.','◇'],strata:['STRATIGRAPHY','Rock layers: sequence made visible','Sedimentary structures, superposition and cross-cutting relationships reveal the order in which geological events happened.','Relative ages, environments, erosion surfaces and missing intervals.','Folding, faulting, erosion and reworking can complicate simple sequences.','≡'],isotopes:['GEOCHEMISTRY','Isotopes: fingerprints of old environments','Stable isotope ratios vary with physical and biological processes and can preserve signals of climate and chemistry.','Changes in temperature, carbon cycling, oxygenation and ocean chemistry.','A single isotope excursion can have several causes and requires context.','◌'],fossils:['PALEONTOLOGY','Fossils: anatomy frozen in context','Bodies, tracks, pollen, shells, teeth and microscopic remains reveal organisms and their environments.','Anatomy, behavior, ecosystems and evolutionary transitions.','Preservation is biased; hard parts and special environments dominate the record.','☵'],ice:['PALEOCLIMATE','Ice cores: cylinders of ancient atmosphere','Polar ice traps ancient air while its chemistry records temperature-related isotopes, dust and volcanism.','Greenhouse gases, dust, volcanism and recent glacial cycles.','Ice cores cover only the geologically recent past compared with the rest of this museum.','◇'],impact:['EVENT STRATIGRAPHY','The K–Pg layer: a global timestamp','An iridium-enriched boundary with shocked minerals and impact spherules occurs worldwide at the end of the Cretaceous.','A globally correlatable catastrophe at 66 million years ago.','The impact occurred within a dynamic Earth system that also included major volcanism.','✦']};
+function evd(k){let e=evidence[k];$('#evidenceMethod').textContent=e[0];$('#evidenceName').textContent=e[1];$('#evidenceDescription').textContent=e[2];$('#evidenceReveals').textContent=e[3];$('#evidenceCaution').textContent=e[4];$$('.evidence-drawer').forEach(b=>b.classList.toggle('active',b.dataset.evidence===k));$('#evidenceVisual').innerHTML=k==='zircon'?'<div class="crystal c1"></div><div class="crystal c2"></div><div class="crystal c3"></div><div class="scanline"></div>':`<div class="evidence-symbol">${e[5]}</div><div class="scanline"></div>`}$$('.evidence-drawer').forEach(b=>b.onclick=()=>evd(b.dataset.evidence));
+const maps=[['rodinia','Rodinia','750 Ma','A late Proterozoic supercontinent assembles much of Earth’s continental crust before rifting apart.'],['gondwana','Gondwana','335 Ma','Large southern landmasses are joined while collisions continue toward final Pangaea assembly.'],['pangaea','Pangaea','250 Ma','Most major landmasses assemble into Pangaea, surrounded by the global ocean Panthalassa.'],['breakup','Pangaea breaks apart','150 Ma','Rifting separates major continental blocks and opens new ocean basins including the growing Atlantic.'],['modern','Modern continents','Now','Plate motion continues today. Continents are temporary arrangements on a mobile lithosphere.']];$('#mapSlider').oninput=e=>{let m=maps[+e.target.value];$('#paleoMap').dataset.map=m[0];$('#mapTitle').textContent=m[1];$('#mapAge').textContent=m[2];$('#mapCopy').textContent=m[3]};
+const am=[{p:0,t:'Hadean outgassing',a:'4.4 Ga',o:'TRACE',c:'VERY HIGH',w:'HOT',s:'OCEANS FORM',x:'Volcanic outgassing creates an atmosphere radically unlike today; free oxygen is essentially absent.'},{p:28,t:'Great Oxidation',a:'2.4 Ga',o:'RISING',c:'DECLINING',w:'VARIABLE',s:'HIGH',x:'Photosynthetic oxygen begins accumulating and changes surface minerals, ocean chemistry and biology.'},{p:54,t:'Snowball aftermath',a:'635 Ma',o:'RISING',c:'HIGHER',w:'WARMING',s:'RISING',x:'The end of severe Neoproterozoic glaciation is associated with major carbon-cycle shifts.'},{p:74,t:'Carboniferous air',a:'315 Ma',o:'HIGH',c:'LOWER',w:'COOLING',s:'VARIABLE',x:'Coal-forming wetlands and long-term carbon burial are associated with unusually high oxygen during parts of the Carboniferous.'},{p:86,t:'Cretaceous greenhouse',a:'100 Ma',o:'MODERATE',c:'HIGH',w:'WARM',s:'VERY HIGH',x:'Warm greenhouse climates and very high sea levels characterize much of the Cretaceous.'},{p:100,t:'Modern atmosphere',a:'Now',o:'~21%',c:'RISING',w:'WARMING',s:'RISING',x:'The modern atmosphere is oxygen-rich while human greenhouse-gas emissions are rapidly altering climate.'}];const nearM=p=>am.reduce((a,b)=>Math.abs(b.p-p)<Math.abs(a.p-p)?b:a);function atm(p){let m=nearM(p);$('#atmTitle').textContent=m.t;$('#atmAge').textContent=m.a;$('#o2Readout').textContent=m.o;$('#co2Readout').textContent=m.c;$('#tempReadout').textContent=m.w;$('#seaReadout').textContent=m.s;$('#atmCopy').textContent=m.x;drawAtmos(p)}$('#atmSlider').oninput=e=>atm(+e.target.value);
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}function drawAtmos(cursor=74){let c=$('#atmosphereCanvas'),x=c.getContext('2d'),w=c.width,h=c.height;x.clearRect(0,0,w,h);[['O₂','--acid',.2],['CO₂','--orange',1.9],['TEMP','--rose',3.1],['SEA','--cyan',4.3]].forEach((l,i)=>{x.beginPath();for(let px=0;px<=w;px+=6){let t=px/w,y=55+i*60+Math.sin(t*10+l[2])*24+Math.sin(t*23+l[2])*9;x.lineTo(px,y)}x.strokeStyle=css(l[1]);x.globalAlpha=.75;x.lineWidth=2;x.stroke();x.globalAlpha=1;x.fillStyle=x.strokeStyle;x.font='11px sans-serif';x.fillText(l[0],10,25+i*60)});let px=cursor/100*w;x.strokeStyle='rgba(255,255,255,.55)';x.setLineDash([4,5]);x.beginPath();x.moveTo(px,0);x.lineTo(px,h);x.stroke();x.setLineDash([])}
+const ex={ordovician:[85,'marine species lost','444 MILLION YEARS AGO','End-Ordovician','Cooling, glaciation and falling sea level devastated marine communities.','Glaciation · sea-level fall · ocean change','Brachiopods · bryozoans · trilobites','Glacial deposits · isotope shifts · facies change','Marine ecosystems re-diversify in the Silurian.','high'],devonian:[75,'species lost','372–359 MILLION YEARS AGO','Late Devonian','A prolonged series of crises destabilized reefs and oxygen-sensitive marine habitats.','Ocean anoxia · climate shifts · nutrient changes','Reef builders · armored fishes · trilobites','Black shales · carbon isotopes · reef collapse','Surviving lineages restructure ecosystems into the Carboniferous.','high'],permian:[83,'marine species lost','251.9 MILLION YEARS AGO','End-Permian','Massive Siberian Traps volcanism drove rapid greenhouse warming and cascading ocean stress.','Flood-basalt volcanism · warming · acidification · anoxia','Trilobites · many corals · marine lineages','Siberian Traps · isotope shifts · mercury','Recovery is prolonged and new Triassic communities emerge.','extreme'],triassic:[80,'species lost','201 MILLION YEARS AGO','End-Triassic','A rapid crisis coincides with enormous volcanism as Pangaea begins to rift.','CAMP volcanism · CO₂ pulse · warming','Conodonts · marine reptiles · large amphibians','Flood basalts · isotope excursions · mercury','Dinosaurs expand through Early Jurassic terrestrial ecosystems.','high'],cretaceous:[76,'species lost','66 MILLION YEARS AGO','End-Cretaceous','The Chicxulub impact triggers darkness, cooling and food-web collapse.','Asteroid impact · debris · climate shock','Non-avian dinosaurs · ammonites · plankton','Iridium · shocked quartz · spherules · crater','Birds and mammals survive; mammals diversify in the early Cenozoic.','high']};function loadExt(k){let e=ex[k];$('#extPercent').textContent='~'+e[0]+'%';$('#extPercentLabel').textContent=e[1];$('#extDate').textContent=e[2];$('#extName').textContent=e[3];$('#extStory').textContent=e[4];$('#extCause').textContent=e[5];$('#extVictims').textContent=e[6];$('#extEvidence').textContent=e[7];$('#extAfter').textContent=e[8];$('.extinction-ring').style.setProperty('--loss',e[0]+'%');$('#treeLife').dataset.loss=e[9];$$('.extinction-tab').forEach(b=>b.classList.toggle('active',b.dataset.ext===k))}$$('.extinction-tab').forEach(b=>b.onclick=()=>loadExt(b.dataset.ext));
+const specimens=[['Stromatolite','Archean–present','Some examples >3.4 billion years','Ancient shallow-water sedimentary settings worldwide','Layered microbial structures preserve some of the clearest sedimentary evidence for very ancient ecosystems.','Microbial communities trap, bind or precipitate sediment into laminated structures.','≋','#63e6ff'],['Trilobite','Paleozoic','~521–252 Ma','Marine rocks worldwide','Rapid evolution and wide distribution make many trilobites useful biostratigraphic fossils.','Diverse marine arthropods with mineralized, segmented exoskeletons.','◫','#c9ff61'],['Ammonite','Mesozoic icon','Devonian–66 Ma','Marine sedimentary rocks','Fast-evolving shell forms are important for correlating marine rock layers.','Ammonoids were cephalopods with chambered shells.','◉','#ffd66e'],['Archaeopteryx','Late Jurassic','~150 Ma','Solnhofen Limestone, Germany','Its mosaic of feathers, wings, teeth, claws and a long tail illuminates early avialan evolution.','Exceptional fossils preserve flight feathers around a small theropod skeleton.','⌁','#ff9e58'],['Tiktaalik','Late Devonian','~375 Ma','Ellesmere Island, Canadian Arctic','Combines fish features with limb-bone architecture relevant to tetrapod evolution.','A shallow-water sarcopterygian with robust internal fin bones and a mobile neck.','≈','#6ae7ff'],['Dinosaur egg','Mesozoic','Varies by specimen','Nesting sites on multiple continents','Eggs, nests and embryos reveal reproduction, development and parental behavior.','Fossil eggs can preserve shell microstructure and nest arrangement.','⬭','#ffcf9b'],['Mammoth tooth','Pleistocene','Many <1 Ma','Northern Eurasia + North America','Enamel plates record grazing adaptation and can preserve dietary chemistry.','Mammoth molars form durable grinding surfaces from repeated enamel plates.','▥','#a7dcff'],['Petrified wood','Many periods','Varies by deposit','Silicified terrestrial sediments','Preserves cellular plant anatomy and ancient forest environments in mineral form.','Minerals replace or fill plant tissues while retaining fine structure.','⌗','#e4a56c'],['Impact spherule','Event deposit','66 Ma at K–Pg','Boundary deposits worldwide','Melt droplets and shocked minerals help fingerprint energetic impacts.','Tiny droplets form when impact-melted material cools after being thrown through the atmosphere.','✦','#ff728f'],['Zircon crystal','Deep-time clock','Oldest grains >4.0 Ga','Ancient sedimentary rocks','Uranium–lead dating makes zircon one of geology’s most powerful mineral clocks.','Tiny durable crystals can survive erosion and metamorphism.','◇','#aa87ff'],['Coprolite','Trace fossil','Many periods','Sedimentary deposits','Fossilized feces can preserve direct evidence of diet and food webs.','Coprolites may contain bone, plant fragments, pollen or parasites.','●','#9f8d6a'],['Burgess Shale fossil','Middle Cambrian','~508 Ma','British Columbia, Canada','Exceptional soft-tissue preservation transformed understanding of Cambrian diversity.','Fine-grained deposits preserve organisms that would normally decay away.','☵','#7de0b5']];$('#specimenGrid').innerHTML=specimens.map((s,i)=>`<button class="specimen-card" data-specimen="${i}" style="--spec:${s[7]}"><span>DRAWER ${String(i+1).padStart(2,'0')}</span><div class="specimen-glyph">${s[6]}</div><b>${s[0]}</b><small>${s[1]}</small></button>`).join('');let found=new Set(JSON.parse(localStorage.getItem('deepTimeFound')||'[]'));function renderFound(){$$('.specimen-card').forEach((b,i)=>b.classList.toggle('found',found.has(i)));$('#foundCount').textContent=found.size;localStorage.setItem('deepTimeFound',JSON.stringify([...found]))}let toastTimer;function toast(){let t=$('#toast');$('#toastText').textContent=found.size+' of 12 in your cabinet';t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200)}function openSpec(i){let s=specimens[i];$('#specimenNumber').textContent='DRAWER '+String(i+1).padStart(2,'0');$('#specimenName').textContent=s[0];$('#specimenRange').textContent=s[1];$('#specimenAge').textContent=s[2];$('#specimenPlace').textContent=s[3];$('#specimenWhy').textContent=s[4];$('#specimenDescription').textContent=s[5];$('#specimenGlyph').textContent=s[6];$('#specimenGlyph').style.color=s[7];if(!found.has(i)){found.add(i);renderFound();toast()}$('#specimenDialog').showModal()}$$('.specimen-card').forEach(b=>b.onclick=()=>openSpec(+b.dataset.specimen));$('#specimenClose').onclick=()=>$('#specimenDialog').close();$('#resetCollection').onclick=()=>{found.clear();renderFound()};renderFound();
+const scales={day:['IF EARTH FORMED AT MIDNIGHT','Humans arrive in the final seconds.','The Cambrian begins late in the evening. Dinosaurs appear still later. Homo sapiens arrives only seconds before the next midnight.',83],year:['IF EARTH FORMED ON JANUARY 1','Our species appears late on December 31.','Complex animal life crowds toward the end of the year. Recorded history occupies only the final moments of New Year’s Eve.',88],km:['IF EARTH HISTORY WERE 1 KILOMETER','Humanity lives in the final centimeters.','Most of the walk contains only microbial life. Dinosaurs appear close to the end and recorded history is barely visible.',89.6]};$$('.scale-btn').forEach(b=>b.onclick=()=>{let s=scales[b.dataset.scale];$$('.scale-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#scaleKicker').textContent=s[0];$('#scaleMain').textContent=s[1];$('#scaleDetail').textContent=s[2];$('.scale-hand').style.transform=`rotate(${s[3]}deg)`});
+const searchIndex=[...events.map(e=>({type:'EVENT',title:e.title,terms:e.title+' '+e.era+' '+e.text,go:()=>{updateTime(e.p);$('#timeline').scrollIntoView({behavior:'smooth'});setTimeout(()=>openField(e),450)}})),...specimens.map((s,i)=>({type:'SPECIMEN',title:s[0],terms:s.slice(0,6).join(' '),go:()=>{$('#collection').scrollIntoView({behavior:'smooth'});setTimeout(()=>openSpec(i),450)}})),...Object.entries(evidence).map(([k,e])=>({type:'EVIDENCE',title:e[1],terms:e.join(' '),go:()=>{evd(k);$('#evidence').scrollIntoView({behavior:'smooth'})}})),...Object.entries(scenes).map(([k,s])=>({type:'WORLD',title:s.period.split('/')[0],terms:k+' '+s.period+' '+s.org.flat().join(' '),go:()=>{scene(k);$('#dioramas').scrollIntoView({behavior:'smooth'})}}))];function search(q=''){q=q.toLowerCase().trim();let h=(q?searchIndex.filter(x=>x.terms.toLowerCase().includes(q)):searchIndex.slice(0,8)).slice(0,10);$('#searchResults').innerHTML=h.map(x=>`<button class="search-result" type="button" data-r="${searchIndex.indexOf(x)}"><span>${x.type}</span><b>${x.title}</b><i>↗</i></button>`).join('')||'<p>No exhibit found. Try a broader term.</p>';$$('.search-result').forEach(b=>b.onclick=()=>{$('#searchDialog').close();searchIndex[+b.dataset.r].go()})}$('#searchOpen').onclick=()=>{$('#searchDialog').showModal();search();setTimeout(()=>$('#museumSearch').focus(),40)};$('#museumSearch').oninput=e=>search(e.target.value);$('#museumSearch').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('.search-result')?.click()}};$('#randomExhibit').onclick=()=>searchIndex[Math.floor(Math.random()*searchIndex.length)].go();
+let ac,gain;$('#soundToggle').onclick=async e=>{let b=e.currentTarget,on=b.getAttribute('aria-pressed')==='true';if(on){gain?.gain.setTargetAtTime(0,ac.currentTime,.15);b.setAttribute('aria-pressed','false');return}if(!ac){ac=new (AudioContext||webkitAudioContext)();gain=ac.createGain();gain.gain.value=.0001;let f=ac.createBiquadFilter();f.type='lowpass';f.frequency.value=280;[54,81].forEach((hz,i)=>{let o=ac.createOscillator();o.type=i?'triangle':'sine';o.frequency.value=hz;o.connect(f);o.start()});f.connect(gain);gain.connect(ac.destination)}await ac.resume();gain.gain.setTargetAtTime(.025,ac.currentTime,.7);b.setAttribute('aria-pressed','true')};
+const star=$('#starfield'),sx=star.getContext('2d');let stars=[];function resize(){let d=Math.min(devicePixelRatio||1,2);star.width=innerWidth*d;star.height=innerHeight*d;sx.setTransform(d,0,0,d,0,0);stars=Array.from({length:Math.min(220,Math.floor(innerWidth/6))},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.2+.15,a:Math.random()*.65+.15,p:Math.random()*6.3}));drawAtmos(+$('#atmSlider').value)}function draw(t=0){sx.clearRect(0,0,innerWidth,innerHeight);stars.forEach(s=>{sx.fillStyle=`rgba(220,239,242,${s.a*(.65+.35*Math.sin(t*.0007+s.p))})`;sx.beginPath();sx.arc(s.x,s.y,s.r,0,Math.PI*2);sx.fill()});if(!matchMedia('(prefers-reduced-motion: reduce)').matches)requestAnimationFrame(draw)}addEventListener('resize',resize);resize();requestAnimationFrame(draw);[$('#fieldDialog'),$('#specimenDialog')].forEach(d=>d.onclick=e=>{if(e.target===d)d.close()});updateTime(0);atm(74);loadExt('ordovician');
